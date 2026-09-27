@@ -31,6 +31,8 @@
   button.gold{background:var(--gold-bg);border-color:var(--gold);color:#7a570e}
   button:disabled{opacity:.45;cursor:not-allowed}
   button:focus-visible{outline:3px solid rgba(200,149,42,.5);outline-offset:1px}
+  button.del{padding:4px 9px;font-size:12px;color:var(--danger);border-color:#e6c2bd;background:#fdf6f5}
+  button.del:hover{border-color:var(--danger)}
 
   .bar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin:22px 0 14px}
   .bar .grow{flex:1}
@@ -108,7 +110,7 @@
   <div class="chips" id="chips"></div>
 
   <div class="bar">
-    <label>총 배정매수 <input type="number" id="totalV" min="0" step="1"></label>
+    <label>총 배정매수 <input type="number" id="totalV" min="0" step="1" value="268"></label>
     <button class="gold" id="btnCalc">가중치 배정 자동계산</button>
     <button class="primary" id="btnSave" disabled>배정 저장</button>
     <span class="grow"></span>
@@ -121,9 +123,9 @@
       <thead><tr>
         <th>순번</th><th>접수시각</th><th>상호</th><th>사업자번호</th><th>대표자</th>
         <th>연락처</th><th>소재지</th><th>요건</th><th>우대</th><th>가중치</th>
-        <th>배정</th><th>상태</th><th>서류</th><th>메모</th>
+        <th>배정</th><th>상태</th><th>서류</th><th>메모</th><th>삭제</th>
       </tr></thead>
-      <tbody id="tbody"><tr><td colspan="14" style="text-align:center;color:var(--soft);padding:30px">불러오는 중…</td></tr></tbody>
+      <tbody id="tbody"><tr><td colspan="15" style="text-align:center;color:var(--soft);padding:30px">불러오는 중…</td></tr></tbody>
     </table>
   </div>
 
@@ -189,6 +191,7 @@ async function load(){
   render(); renderChips(st.data);
   $("btnToggle").textContent = regOpen ? "접수 닫기(수동 마감)" : "접수 다시 열기";
 }
+$("totalV").addEventListener("input", () => renderChips(lastSt));
 $("btnRefresh").addEventListener("click", () => load().then(()=>toast("새로고침 완료")));
 
 function renderChips(st){
@@ -209,7 +212,7 @@ function renderChips(st){
 function render(){
   const tb = $("tbody");
   if (!rows.length){ tb.innerHTML =
-    `<tr><td colspan="14" style="text-align:center;color:var(--soft);padding:30px">아직 접수가 없습니다</td></tr>`; return; }
+    `<tr><td colspan="15" style="text-align:center;color:var(--soft);padding:30px">아직 접수가 없습니다</td></tr>`; return; }
   tb.innerHTML = rows.map(r => `
     <tr class="${r.status==='cancelled'?'cancelled':''}" data-id="${r.id}">
       <td class="num">${r.seq}</td>
@@ -232,6 +235,7 @@ function render(){
       <td><a class="doc nostrike" href="${docUrl(r.doc_path)}" target="_blank" rel="noopener">등록증</a></td>
       <td><input class="alloc memo nostrike" style="width:120px;text-align:left"
         type="text" value="${esc(r.memo||"")}" placeholder="메모"></td>
+      <td class="nostrike"><button class="del">삭제</button></td>
     </tr>`).join("");
 
   tb.querySelectorAll("input.alloc:not(.memo)").forEach(inp =>
@@ -244,6 +248,7 @@ function render(){
     }));
   tb.querySelectorAll("select.st").forEach(sel =>
     sel.addEventListener("change", async e => {
+      if (dirty.size && !confirm("저장하지 않은 배정 수정이 있습니다. 상태를 저장하면 화면이 새로고침되어 사라집니다. 계속할까요?")) { load(); return; }
       const id = e.target.closest("tr").dataset.id;
       const { data } = await sb.rpc("admin_update",
         { p_key: KEY, p_id: id, p_status: e.target.value });
@@ -254,6 +259,15 @@ function render(){
       const id = e.target.closest("tr").dataset.id;
       await sb.rpc("admin_update", { p_key: KEY, p_id: id, p_memo: e.target.value });
       toast("메모 저장됨");
+    }));
+  tb.querySelectorAll("button.del").forEach(btn =>
+    btn.addEventListener("click", async e => {
+      const tr = e.target.closest("tr"), id = tr.dataset.id;
+      const name = tr.children[2].innerText;
+      if (!confirm(`[${name}] 접수를 완전 삭제할까요?\n\n취소와 달리 기록이 사라지고 자리가 반환되며 되돌릴 수 없습니다.\n(테스트·오접수 정리용)`)) return;
+      const { data, error } = await sb.rpc("admin_delete", { p_key: KEY, p_id: id });
+      if (error || !data.ok) { toast("삭제 실패 — 다시 시도하세요"); return; }
+      toast("완전 삭제 완료 — 자리 반환됨"); load();
     }));
 }
 const esc = s => String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
