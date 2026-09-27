@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>상품권 등록 관리 — 별빛정원</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+<link href="https://fonts.googleapis.com/css2?family=Gowun+Batang:wght@700&display=swap" rel="stylesheet">
+<style>
+  :root{--paper:#faf7ee;--card:#ffffff;--ink:#23273b;--soft:#6a6f85;--line:#e3ddc9;
+    --gold:#c8952a;--gold-bg:#faf1dc;--night:#141a33;--danger:#b8483c;--ok:#37744e}
+  *{box-sizing:border-box}
+  body{margin:0;font-family:"Pretendard Variable",Pretendard,system-ui,sans-serif;
+    background:var(--paper);color:var(--ink);font-size:15px;line-height:1.55}
+  .wrap{max-width:1280px;margin:0 auto;padding:26px 22px 80px}
+  h1{font-family:"Gowun Batang",serif;font-size:24px;margin:0}
+  h1 span{color:var(--gold)}
+  .sub{color:var(--soft);margin:4px 0 0;font-size:14px}
+
+  /* key gate */
+  .gate{max-width:420px;margin:12vh auto;background:var(--card);border:1px solid var(--line);
+    border-radius:14px;padding:34px 30px;text-align:center}
+  .gate input{width:100%;font:inherit;font-size:17px;padding:12px 14px;margin:18px 0 12px;
+    border:1.5px solid var(--line);border-radius:10px}
+  .gate input:focus-visible{outline:none;border-color:var(--gold);box-shadow:0 0 0 3px rgba(200,149,42,.25)}
+
+  button{font:inherit;cursor:pointer;border-radius:9px;border:1.5px solid var(--line);
+    background:#fff;padding:9px 16px;font-weight:600}
+  button:hover{border-color:var(--gold)}
+  button.primary{background:var(--night);border-color:var(--night);color:#f6e9c8}
+  button.gold{background:var(--gold-bg);border-color:var(--gold);color:#7a570e}
+  button:disabled{opacity:.45;cursor:not-allowed}
+  button:focus-visible{outline:3px solid rgba(200,149,42,.5);outline-offset:1px}
+
+  .bar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin:22px 0 14px}
+  .bar .grow{flex:1}
+  .bar label{font-size:14px;color:var(--soft)}
+  .bar input[type=number]{width:84px;font:inherit;padding:8px 10px;border:1.5px solid var(--line);
+    border-radius:9px;text-align:right}
+
+  .chips{display:flex;flex-wrap:wrap;gap:10px;margin:18px 0 0}
+  .chip{background:var(--card);border:1px solid var(--line);border-radius:11px;
+    padding:12px 18px;min-width:128px}
+  .chip b{display:block;font-size:23px;font-variant-numeric:tabular-nums}
+  .chip span{font-size:13px;color:var(--soft)}
+  .chip.warn b{color:var(--danger)}
+  .chip.good b{color:var(--ok)}
+
+  .tablewrap{overflow-x:auto;background:var(--card);border:1px solid var(--line);
+    border-radius:12px;margin-top:14px}
+  table{border-collapse:collapse;width:100%;min-width:1180px;font-size:13.5px}
+  th{position:sticky;top:0;background:var(--night);color:#e9e3cf;font-weight:600;
+    padding:9px 10px;text-align:left;white-space:nowrap}
+  td{padding:8px 10px;border-top:1px solid var(--line);vertical-align:middle;white-space:nowrap}
+  tr:nth-child(even) td{background:#fcfaf3}
+  tr.cancelled td{color:#9aa0b4;text-decoration:line-through}
+  tr.cancelled td .nostrike{text-decoration:none}
+  td.num{text-align:right;font-variant-numeric:tabular-nums}
+  .b{display:inline-block;background:var(--gold-bg);color:#7a570e;border-radius:6px;
+    padding:1px 7px;font-size:12px;font-weight:700;margin-right:3px;text-decoration:none}
+  .w{font-weight:800;color:var(--gold)}
+  input.alloc{width:64px;font:inherit;padding:5px 7px;border:1.5px solid var(--line);
+    border-radius:7px;text-align:right;font-variant-numeric:tabular-nums}
+  input.alloc.dirty{border-color:var(--gold);background:var(--gold-bg)}
+  select.st{font:inherit;padding:5px 7px;border:1.5px solid var(--line);border-radius:7px;background:#fff}
+  a.doc{color:#2c5d9c;text-decoration:none;font-weight:600}
+  a.doc:hover{text-decoration:underline}
+
+  .qr{display:flex;gap:22px;align-items:center;background:var(--card);
+    border:1px solid var(--line);border-radius:12px;padding:18px 20px;margin-top:26px}
+  .qr #qrbox{background:#fff;padding:8px;border:1px solid var(--line);border-radius:8px}
+  .qr input{flex:1;font:inherit;padding:10px 12px;border:1.5px solid var(--line);border-radius:9px}
+  .qr .col{flex:1;display:flex;flex-direction:column;gap:10px}
+  .qr h3{margin:0;font-size:16px}
+
+  .toast{position:fixed;left:50%;bottom:28px;transform:translateX(-50%);
+    background:var(--night);color:#f6e9c8;padding:11px 22px;border-radius:999px;
+    font-size:14px;opacity:0;pointer-events:none;transition:opacity .25s}
+  .toast.on{opacity:1}
+  .leftnote{color:var(--danger);font-size:13.5px;margin:8px 2px 0}
+  #app{display:none}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<!-- 관리자 키 -->
+<div class="gate" id="gate">
+  <h1>상품권 등록 <span>관리</span></h1>
+  <p class="sub">별빛정원 지역업체 상품권 선착순 등록</p>
+  <input type="password" id="keyInput" placeholder="관리자 키" autocomplete="current-password">
+  <button class="primary" id="btnLogin" style="width:100%;padding:12px">접속</button>
+  <p class="sub" id="gateMsg"></p>
+</div>
+
+<div id="app">
+  <div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px;align-items:flex-end">
+    <div>
+      <h1>상품권 등록 <span>관리</span></h1>
+      <p class="sub">별빛정원 지역업체 상품권 선착순 등록 · 가중치 = 기본 10 + 밤10시 이후 5 + 영남루 인근 5 + 관광주민증 2</p>
+    </div>
+    <div style="display:flex;gap:10px">
+      <button id="btnRefresh">새로고침</button>
+      <button id="btnToggle" class="gold">접수 상태 확인 중…</button>
+    </div>
+  </div>
+
+  <div class="chips" id="chips"></div>
+
+  <div class="bar">
+    <label>총 배정매수 <input type="number" id="totalV" min="0" step="1"></label>
+    <button class="gold" id="btnCalc">가중치 배정 자동계산</button>
+    <button class="primary" id="btnSave" disabled>배정 저장</button>
+    <span class="grow"></span>
+    <button class="primary" id="btnExcel">엑셀 다운로드</button>
+  </div>
+  <p class="leftnote" id="allocNote" hidden></p>
+
+  <div class="tablewrap">
+    <table id="tbl">
+      <thead><tr>
+        <th>순번</th><th>접수시각</th><th>상호</th><th>사업자번호</th><th>대표자</th>
+        <th>연락처</th><th>소재지</th><th>요건</th><th>우대</th><th>가중치</th>
+        <th>배정</th><th>상태</th><th>서류</th><th>메모</th>
+      </tr></thead>
+      <tbody id="tbody"><tr><td colspan="14" style="text-align:center;color:var(--soft);padding:30px">불러오는 중…</td></tr></tbody>
+    </table>
+  </div>
+
+  <div class="qr">
+    <div id="qrbox"></div>
+    <div class="col">
+      <h3>공고 게재용 접수 QR</h3>
+      <input type="text" id="regUrl" placeholder="접수 페이지 주소 (배포 후 입력)">
+      <div style="display:flex;gap:10px">
+        <button class="gold" id="btnQr">QR 생성</button>
+        <button id="btnQrDl" disabled>QR 이미지 저장</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script>
+/* ===== 배포 시 register.html과 동일 값 입력 ===== */
+const SUPABASE_URL = "https://snaldhxucwsaifqrccih.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNuYWxkaHh1Y3dzYWlmcXJjY2loIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODgyNzIwNjAsImV4cCI6MjEwMzg0ODA2MH0.TUdhun_cBHsool0e2FZOOfznjFoC_u5B0MJCl1dTDhI";
+/* =============================================== */
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const $ = id => document.getElementById(id);
+let KEY = "", rows = [], dirty = new Set(), regOpen = true;
+
+const weight = r => 10 + (r.pt_late?5:0) + (r.pt_near?5:0) + (r.pt_resident?2:0);
+const active = () => rows.filter(r => r.status !== "cancelled");
+const fmtBiz = b => b.replace(/(\d{3})(\d{2})(\d{5})/, "$1-$2-$3");
+const fmtT = t => new Date(t).toLocaleString("ko-KR",{month:"2-digit",day:"2-digit",
+  hour:"2-digit",minute:"2-digit",second:"2-digit",hour12:false});
+const docUrl = p => `${SUPABASE_URL}/storage/v1/object/public/biz-docs/${p}`;
+function toast(m){ const t=$("toast"); t.textContent=m; t.classList.add("on");
+  setTimeout(()=>t.classList.remove("on"), 2400); }
+
+/* ---------- 접속 ---------- */
+$("btnLogin").addEventListener("click", login);
+$("keyInput").addEventListener("keydown", e => { if (e.key==="Enter") login(); });
+async function login(){
+  KEY = $("keyInput").value.trim();
+  if (!KEY) return;
+  $("gateMsg").textContent = "확인 중…";
+  try {
+    await load();
+    $("gate").style.display = "none"; $("app").style.display = "block";
+  } catch (e) {
+    $("gateMsg").textContent = "관리자 키가 올바르지 않거나 통신에 실패했습니다.";
+  }
+}
+
+/* ---------- 데이터 ---------- */
+async function load(){
+  const [{ data, error }, st] = await Promise.all([
+    sb.rpc("admin_list", { p_key: KEY }), sb.rpc("reg_status")]);
+  if (error) throw error;
+  rows = data || []; dirty.clear();
+  if (st.data) regOpen = !!st.data.open;
+  render(); renderChips(st.data);
+  $("btnToggle").textContent = regOpen ? "접수 닫기(수동 마감)" : "접수 다시 열기";
+}
+$("btnRefresh").addEventListener("click", () => load().then(()=>toast("새로고침 완료")));
+
+function renderChips(st){
+  const a = active(), agreed = rows.filter(r=>r.status==="agreed").length,
+    cancelled = rows.filter(r=>r.status==="cancelled").length,
+    sum = a.reduce((s,r)=>s+(r.alloc||0),0),
+    total = +$("totalV").value || 0;
+  $("chips").innerHTML = `
+    <div class="chip"><b>${rows.length} / ${st?st.cap:80}</b><span>누적 접수 (마감 기준)</span></div>
+    <div class="chip"><b>${a.length}</b><span>유효 접수 (배정 대상)</span></div>
+    <div class="chip"><b>${agreed}</b><span>약정 완료</span></div>
+    <div class="chip"><b>${cancelled}</b><span>취소 (자리 반환 없음)</span></div>
+    <div class="chip ${sum===total&&total>0?"good":(sum>total?"warn":"")}">
+      <b>${sum.toLocaleString()} / ${total.toLocaleString()}</b><span>배정 합계 / 총매수</span></div>
+    <div class="chip"><b>${(sum*9900).toLocaleString()}원</b><span>사전정산 선지급액</span></div>`;
+}
+
+function render(){
+  const tb = $("tbody");
+  if (!rows.length){ tb.innerHTML =
+    `<tr><td colspan="14" style="text-align:center;color:var(--soft);padding:30px">아직 접수가 없습니다</td></tr>`; return; }
+  tb.innerHTML = rows.map(r => `
+    <tr class="${r.status==='cancelled'?'cancelled':''}" data-id="${r.id}">
+      <td class="num">${r.seq}</td>
+      <td>${fmtT(r.created_at)}</td>
+      <td><b>${esc(r.name)}</b></td>
+      <td>${fmtBiz(r.biznum)}</td>
+      <td>${esc(r.owner)}</td>
+      <td>${esc(r.phone)}</td>
+      <td style="max-width:220px;overflow:hidden;text-overflow:ellipsis">${esc(r.address)}</td>
+      <td>${r.req_local&&r.req_merchant&&r.req_weekend?"충족":"<span style='color:var(--danger)'>미충족</span>"}</td>
+      <td>${r.pt_late?'<span class="b">밤10↑</span>':""}${r.pt_near?'<span class="b">인근</span>':""}${r.pt_resident?'<span class="b">주민증</span>':""}</td>
+      <td class="num w">${weight(r)}</td>
+      <td class="nostrike"><input class="alloc" type="number" min="0" step="1"
+        value="${r.alloc ?? ""}" ${r.status==='cancelled'?'disabled':''}></td>
+      <td><select class="st">
+        <option value="received" ${r.status==='received'?'selected':''}>접수</option>
+        <option value="agreed" ${r.status==='agreed'?'selected':''}>약정완료</option>
+        <option value="cancelled" ${r.status==='cancelled'?'selected':''}>취소</option>
+      </select></td>
+      <td><a class="doc nostrike" href="${docUrl(r.doc_path)}" target="_blank" rel="noopener">등록증</a></td>
+      <td><input class="alloc memo nostrike" style="width:120px;text-align:left"
+        type="text" value="${esc(r.memo||"")}" placeholder="메모"></td>
+    </tr>`).join("");
+
+  tb.querySelectorAll("input.alloc:not(.memo)").forEach(inp =>
+    inp.addEventListener("input", e => {
+      const id = e.target.closest("tr").dataset.id;
+      const r = rows.find(x=>x.id===id);
+      r.alloc = e.target.value === "" ? null : +e.target.value;
+      e.target.classList.add("dirty"); dirty.add(id);
+      $("btnSave").disabled = false; renderChips(lastSt);
+    }));
+  tb.querySelectorAll("select.st").forEach(sel =>
+    sel.addEventListener("change", async e => {
+      const id = e.target.closest("tr").dataset.id;
+      const { data } = await sb.rpc("admin_update",
+        { p_key: KEY, p_id: id, p_status: e.target.value });
+      if (data && data.ok){ toast("상태 저장됨"); load(); }
+    }));
+  tb.querySelectorAll("input.memo").forEach(inp =>
+    inp.addEventListener("change", async e => {
+      const id = e.target.closest("tr").dataset.id;
+      await sb.rpc("admin_update", { p_key: KEY, p_id: id, p_memo: e.target.value });
+      toast("메모 저장됨");
+    }));
+}
+const esc = s => String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+let lastSt = null;
+const _renderChips = renderChips;
+renderChips = st => { if (st) lastSt = st; _renderChips(lastSt); };
+
+/* ---------- 자동 배정 (비례배분 · 최소3 · 최대30) ---------- */
+$("btnCalc").addEventListener("click", () => {
+  const total = +$("totalV").value || 0;
+  const list = active();
+  if (!list.length || !total){ toast("접수 건과 총 배정매수를 확인하세요"); return; }
+  const W = list.reduce((s,r)=>s+weight(r),0);
+  const a = list.map(r => { const raw = total*weight(r)/W;
+    return { r, raw, v: Math.max(3, Math.min(30, Math.floor(raw))) }; });
+  let sum = a.reduce((s,x)=>s+x.v,0), g = 0;
+  while (sum < total && g++ < 5000){
+    const c = a.filter(x=>x.v<30).sort((p,q)=>(q.raw-q.v)-(p.raw-p.v)||p.r.seq-q.r.seq)[0];
+    if (!c) break; c.v++; sum++;
+  }
+  g = 0;
+  while (sum > total && g++ < 5000){
+    const c = a.filter(x=>x.v>3).sort((p,q)=>(p.raw-p.v)-(q.raw-q.v)||q.r.seq-p.r.seq)[0];
+    if (!c) break; c.v--; sum--;
+  }
+  a.forEach(x => { x.r.alloc = x.v; dirty.add(x.r.id); });
+  $("btnSave").disabled = false;
+  render(); renderChips(lastSt);
+  const note = $("allocNote");
+  if (sum !== total){
+    note.hidden = false;
+    note.textContent = sum < total
+      ? `업소당 최대 30매 제한으로 ${total-sum}매가 배정되지 않았습니다. 상한을 조정하거나 잔여분 처리 방침을 정하세요.`
+      : `업소당 최소 3매 보장으로 총매수를 ${sum-total}매 초과합니다. 총매수 또는 최소 매수를 조정하세요.`;
+  } else note.hidden = true;
+  toast(`자동계산 완료 · 합계 ${sum}매 (저장 전)`);
+});
+
+/* ---------- 배정 저장 ---------- */
+$("btnSave").addEventListener("click", async () => {
+  const payload = rows.filter(r => dirty.has(r.id))
+    .map(r => ({ id: r.id, alloc: r.alloc ?? 0 }));
+  if (!payload.length) return;
+  const { data, error } = await sb.rpc("admin_save_alloc",
+    { p_key: KEY, p_rows: payload });
+  if (error || !data.ok){ toast("저장 실패 — 다시 시도하세요"); return; }
+  dirty.clear(); $("btnSave").disabled = true;
+  document.querySelectorAll("input.alloc.dirty").forEach(i=>i.classList.remove("dirty"));
+  toast(`배정 ${data.n}건 저장 완료`);
+});
+
+/* ---------- 접수 열기/닫기 ---------- */
+$("btnToggle").addEventListener("click", async () => {
+  const next = regOpen ? "false" : "true";
+  if (!confirm(regOpen ? "접수를 수동 마감할까요? 접수 페이지에 즉시 마감으로 표시됩니다."
+                       : "접수를 다시 열까요?")) return;
+  const { data } = await sb.rpc("admin_set",
+    { p_key: KEY, p_setting: "reg_open", p_value: next });
+  if (data && data.ok){ toast(next==="true"?"접수를 열었습니다":"접수를 닫았습니다"); load(); }
+});
+
+/* ---------- 엑셀 ---------- */
+$("btnExcel").addEventListener("click", () => {
+  const total = +$("totalV").value || 0;
+  const head = ["순번","접수시각","상호","사업자등록번호","대표자","연락처","소재지",
+    "관내","가맹점","토일영업","밤10시이후(+5)","영남루인근(+5)","관광주민증(+2)",
+    "가중치","배정매수","선지급액(원)","상태","메모","서류 링크"];
+  const stKo = { received:"접수", agreed:"약정완료", cancelled:"취소" };
+  const body = rows.map(r => [ r.seq,
+    new Date(r.created_at).toLocaleString("ko-KR",{hour12:false}),
+    r.name, fmtBiz(r.biznum), r.owner, r.phone, r.address,
+    r.req_local?"O":"X", r.req_merchant?"O":"X", r.req_weekend?"O":"X",
+    r.pt_late?"O":"X", r.pt_near?"O":"X", r.pt_resident?"O":"X",
+    weight(r), r.alloc ?? "", r.alloc ? r.alloc*9900 : "",
+    stKo[r.status], r.memo||"", docUrl(r.doc_path) ]);
+  const ws1 = XLSX.utils.aoa_to_sheet([head, ...body]);
+  ws1["!cols"] = head.map((h,i)=>({wch:[5,19,16,14,9,14,26,5,6,7,12,12,12,7,8,11,8,14,40][i]||10}));
+  const a = active(), sum = a.reduce((s,r)=>s+(r.alloc||0),0);
+  const ws2 = XLSX.utils.aoa_to_sheet([
+    ["별빛정원 지역업체 상품권 선착순 등록 — 현황 요약"],
+    ["내려받은 시각", new Date().toLocaleString("ko-KR",{hour12:false})],
+    [],
+    ["유효 접수(취소 제외)", a.length, "개소"],
+    ["약정 완료", rows.filter(r=>r.status==="agreed").length, "개소"],
+    ["취소", rows.filter(r=>r.status==="cancelled").length, "개소"],
+    ["총 배정매수(설정)", total, "매"],
+    ["배정 합계(저장 기준 화면값)", sum, "매"],
+    ["사전정산 선지급액", sum*9900, "원"],
+    ["가중치 합계", a.reduce((s,r)=>s+weight(r),0)],
+    [],
+    ["가중치 기준","기본 10 + 밤10시 이후 5 + 영남루 인근 5 + 관광주민증 2 · 최소 3매 · 최대 30매"]]);
+  ws2["!cols"] = [{wch:26},{wch:22},{wch:6}];
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws1, "접수목록");
+  XLSX.utils.book_append_sheet(wb, ws2, "요약");
+  const d = new Date(), pad = n => String(n).padStart(2,"0");
+  XLSX.writeFile(wb, `별빛정원_상품권등록_${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}_${pad(d.getHours())}${pad(d.getMinutes())}.xlsx`);
+});
+
+/* ---------- QR ---------- */
+let qr = null;
+$("btnQr").addEventListener("click", () => {
+  const url = $("regUrl").value.trim();
+  if (!url){ toast("접수 페이지 주소를 입력하세요"); return; }
+  $("qrbox").innerHTML = "";
+  qr = new QRCode($("qrbox"), { text: url, width: 148, height: 148,
+    correctLevel: QRCode.CorrectLevel.M });
+  $("btnQrDl").disabled = false;
+});
+$("btnQrDl").addEventListener("click", () => {
+  const cv = $("qrbox").querySelector("canvas");
+  if (!cv) return;
+  const a = document.createElement("a");
+  a.href = cv.toDataURL("image/png");
+  a.download = "별빛정원_상품권등록_QR.png"; a.click();
+});
+</script>
+</body>
+</html>
